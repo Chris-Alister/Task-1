@@ -1,0 +1,255 @@
+import React, { useState, useEffect } from 'react';
+import { Routes, Route } from 'react-router-dom';
+import axios from 'axios';
+import toast from 'react-hot-toast';
+import { Plus, Users, Trash2, Edit, Eye } from 'lucide-react';
+import AddStudentModal from '../components/AddStudentModal';
+import EditStudentModal from '../components/EditStudentModal';
+import StudentDetailsModal from '../components/StudentDetailsModal';
+
+const AdminDashboard = () => {
+  const [students, setStudents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState(null);
+
+  useEffect(() => {
+    fetchStudents();
+  }, []);
+
+  const fetchStudents = async () => {
+    try {
+      const response = await axios.get('/api/admin/students');
+      setStudents(response.data.data);
+    } catch (error) {
+      toast.error('Failed to fetch students');
+      console.error('Error fetching students:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddStudent = async (studentData) => {
+    try {
+      const response = await axios.post('/api/admin/add-student', studentData);
+      toast.success('Student added successfully');
+      setShowAddModal(false);
+      fetchStudents();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to add student');
+    }
+  };
+
+  const handleEditStudent = async (studentData) => {
+    try {
+      await axios.put(`/api/admin/students/${selectedStudent._id}`, studentData);
+      toast.success('Student updated successfully');
+      setShowEditModal(false);
+      setSelectedStudent(null);
+      fetchStudents();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to update student');
+    }
+  };
+
+  const handleDeleteStudent = async (studentId) => {
+    if (!window.confirm('Are you sure you want to delete this student?')) {
+      return;
+    }
+
+    try {
+      await axios.delete(`/api/admin/delete-student/${studentId}`);
+      toast.success('Student deleted successfully');
+      fetchStudents();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to delete student');
+    }
+  };
+
+  const openEditModal = (student) => {
+    setSelectedStudent(student);
+    setShowEditModal(true);
+  };
+
+  const openDetailsModal = (student) => {
+    setSelectedStudent(student);
+    setShowDetailsModal(true);
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-6 space-y-8">
+      {/* Header Section */}
+      <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg shadow-lg p-6 text-white">
+        <div className="flex flex-col md:flex-row md:justify-between md:items-center space-y-4 md:space-y-0">
+          <div>
+            <h1 className="text-2xl font-bold">Student Management</h1>
+          </div>
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="bg-white text-blue-600 hover:bg-gray-100 font-medium px-6 py-3 rounded-lg flex items-center space-x-2 transition-colors"
+          >
+            <Plus className="h-5 w-5" />
+            <span>Add Student</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Stats Section */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg shadow-md p-6 text-white">
+          <div className="flex items-center">
+            <div className="bg-white bg-opacity-20 rounded-full p-3">
+              <Users className="h-8 w-8" />
+            </div>
+            <div className="ml-4">
+              <p className="text-blue-100 text-sm font-medium">Total Students</p>
+              <p className="text-3xl font-bold">{students.length}</p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg shadow-md p-6 text-white">
+          <div className="flex items-center">
+            <div className="bg-white bg-opacity-20 rounded-full p-3">
+              <Users className="h-8 w-8" />
+            </div>
+            <div className="ml-4">
+              <p className="text-purple-100 text-sm font-medium">Classes</p>
+              <p className="text-3xl font-bold">{[...new Set(students.map(s => s.className))].length}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Students Table */}
+      <div className="bg-white rounded-lg shadow-md overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <h2 className="text-xl font-semibold text-gray-800">All Students</h2>
+          <p className="text-gray-600 text-sm">Click on actions to view, edit, or delete students</p>
+        </div>
+        
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Roll Number</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Class</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Section</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {students.map((student) => (
+                <tr key={student._id} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-medium text-gray-900">{student.name}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">{student.rollNumber}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                      {student.className}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                      {student.section}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">{student.email}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex space-x-3">
+                      <button
+                        onClick={() => openDetailsModal(student)}
+                        className="bg-blue-100 hover:bg-blue-200 text-blue-600 p-2 rounded-lg transition-colors"
+                        title="View Details"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => openEditModal(student)}
+                        className="bg-green-100 hover:bg-green-200 text-green-600 p-2 rounded-lg transition-colors"
+                        title="Edit Student"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteStudent(student._id)}
+                        className="bg-red-100 hover:bg-red-200 text-red-600 p-2 rounded-lg transition-colors"
+                        title="Delete Student"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          
+          {students.length === 0 && (
+            <div className="text-center py-12">
+              <div className="bg-gray-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                <Users className="h-8 w-8 text-gray-400" />
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No students found</h3>
+              <p className="text-gray-500 mb-4">Get started by adding your first student to the system</p>
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 rounded-lg transition-colors"
+              >
+                Add First Student
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Modals */}
+      {showAddModal && (
+        <AddStudentModal
+          onClose={() => setShowAddModal(false)}
+          onSubmit={handleAddStudent}
+        />
+      )}
+
+      {showEditModal && selectedStudent && (
+        <EditStudentModal
+          student={selectedStudent}
+          onClose={() => {
+            setShowEditModal(false);
+            setSelectedStudent(null);
+          }}
+          onSubmit={handleEditStudent}
+        />
+      )}
+
+      {showDetailsModal && selectedStudent && (
+        <StudentDetailsModal
+          student={selectedStudent}
+          onClose={() => {
+            setShowDetailsModal(false);
+            setSelectedStudent(null);
+          }}
+        />
+      )}
+    </div>
+  );
+};
+
+export default AdminDashboard; 
