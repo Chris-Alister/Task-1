@@ -7,7 +7,8 @@ const {
   deleteMarks,
   getStudentMarks,
   downloadStudentMarks,
-  getAllMarks
+  getAllMarks,
+  downloadAllMarks
 } = require('../controllers/teacherController');
 const authMiddleware = require('../middleware/authMiddleware');
 
@@ -31,5 +32,8 @@ router.delete('/marks/:id', authMiddleware, deleteMarks);
 
 // GET /api/teacher/students/:studentId/download-marks - Download student marks as Excel
 router.get('/students/:studentId/download-marks', authMiddleware, downloadStudentMarks);
+
+// GET /api/teacher/download-all-marks - Download all marks as Excel
+router.get('/download-all-marks', authMiddleware, downloadAllMarks);
 
 module.exports = router; 

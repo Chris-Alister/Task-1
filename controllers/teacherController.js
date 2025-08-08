@@ -311,14 +311,17 @@ const downloadStudentMarks = async (req, res) => {
 
     // Add marks data
     marks.forEach(mark => {
+      // Calculate percentage if not already calculated
+      const percentage = mark.percentage || (mark.marks && mark.totalMarks ? (mark.marks / mark.totalMarks) * 100 : 0);
+      
       worksheet.addRow({
         subject: mark.subject,
         examType: mark.examType,
         marks: mark.marks,
         totalMarks: mark.totalMarks,
-        percentage: `${mark.percentage.toFixed(2)}%`,
+        percentage: `${percentage.toFixed(2)}%`,
         grade: mark.grade,
-        examDate: mark.examDate.toLocaleDateString(),
+        examDate: mark.examDate ? mark.examDate.toLocaleDateString() : 'N/A',
         academicYear: mark.academicYear,
         semester: mark.semester,
         remarks: mark.remarks || ''
@@ -381,6 +384,92 @@ const getAllMarks = async (req, res) => {
   }
 };
 
+// Download all marks in one Excel file
+const downloadAllMarks = async (req, res) => {
+  try {
+    const { subject, examType, academicYear } = req.query;
+    
+    let query = {};
+    
+    if (subject) query.subject = subject;
+    if (examType) query.examType = examType;
+    if (academicYear) query.academicYear = academicYear;
+
+    const marks = await Marks.find(query)
+      .populate('student', 'name rollNumber className section')
+      .sort({ 'student.name': 1, examDate: -1 });
+
+    // Create Excel workbook
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('All Students Marks');
+
+    // Add headers
+    worksheet.columns = [
+      { header: 'Student Name', key: 'studentName', width: 20 },
+      { header: 'Roll Number', key: 'rollNumber', width: 15 },
+      { header: 'Class', key: 'className', width: 10 },
+      { header: 'Section', key: 'section', width: 10 },
+      { header: 'Subject', key: 'subject', width: 15 },
+      { header: 'Exam Type', key: 'examType', width: 15 },
+      { header: 'Marks Obtained', key: 'marks', width: 15 },
+      { header: 'Total Marks', key: 'totalMarks', width: 15 },
+      { header: 'Percentage', key: 'percentage', width: 15 },
+      { header: 'Grade', key: 'grade', width: 10 },
+      { header: 'Exam Date', key: 'examDate', width: 15 },
+      { header: 'Academic Year', key: 'academicYear', width: 15 },
+      { header: 'Semester', key: 'semester', width: 10 },
+      { header: 'Remarks', key: 'remarks', width: 20 }
+    ];
+
+    // Add marks data
+    marks.forEach(mark => {
+      // Calculate percentage if not already calculated
+      const percentage = mark.percentage || (mark.marks && mark.totalMarks ? (mark.marks / mark.totalMarks) * 100 : 0);
+      
+      worksheet.addRow({
+        studentName: mark.student ? mark.student.name : 'Unknown Student',
+        rollNumber: mark.student ? mark.student.rollNumber : 'N/A',
+        className: mark.student ? mark.student.className : 'N/A',
+        section: mark.student ? mark.student.section : 'N/A',
+        subject: mark.subject,
+        examType: mark.examType,
+        marks: mark.marks,
+        totalMarks: mark.totalMarks,
+        percentage: `${percentage.toFixed(2)}%`,
+        grade: mark.grade,
+        examDate: mark.examDate ? mark.examDate.toLocaleDateString() : 'N/A',
+        academicYear: mark.academicYear,
+        semester: mark.semester,
+        remarks: mark.remarks || ''
+      });
+    });
+
+    // Style the header row
+    const headerRow = worksheet.getRow(1);
+    headerRow.font = { bold: true };
+    headerRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFE0E0E0' }
+    };
+
+    // Set response headers
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename=all_students_marks.xlsx');
+
+    // Write to response
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (error) {
+    console.error('Error downloading all marks:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error downloading all marks',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   getAllStudents,
   addMarks,
@@ -388,5 +477,6 @@ module.exports = {
   deleteMarks,
   getStudentMarks,
   downloadStudentMarks,
-  getAllMarks
+  getAllMarks,
+  downloadAllMarks
 }; 

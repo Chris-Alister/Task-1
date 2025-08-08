@@ -15,6 +15,8 @@ const TeacherDashboard = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedMarks, setSelectedMarks] = useState(null);
+  const [downloadingAll, setDownloadingAll] = useState(false);
+  const [downloadingCombined, setDownloadingCombined] = useState(false);
   const [filters, setFilters] = useState({
     subject: '',
     examType: '',
@@ -85,6 +87,22 @@ const TeacherDashboard = () => {
         responseType: 'blob'
       });
       
+      // Check if the response is actually a blob (Excel file)
+      if (response.data.type && response.data.type.includes('application/json')) {
+        // This means we got an error response instead of a file
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const errorData = JSON.parse(reader.result);
+            throw new Error(errorData.message || 'Download failed');
+          } catch (e) {
+            throw new Error('Download failed');
+          }
+        };
+        reader.readAsText(response.data);
+        return;
+      }
+      
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
@@ -93,10 +111,13 @@ const TeacherDashboard = () => {
       link.click();
       link.remove();
       
-      toast.success('Marks downloaded successfully');
+      // Clean up the URL object
+      window.URL.revokeObjectURL(url);
+      
+      toast.success(`${studentName}'s marks downloaded successfully`);
     } catch (error) {
-      toast.error('Failed to download marks');
       console.error('Error downloading marks:', error);
+      throw error; // Re-throw to be handled by the calling function
     }
   };
 
@@ -123,19 +144,87 @@ const TeacherDashboard = () => {
 
   // Download all marks for each unique student
   const handleDownloadAll = async () => {
-    // Get unique students from marks
-    const uniqueStudents = Array.from(
-      marks.reduce((map, mark) => {
-        if (mark.student && mark.student._id) {
-          map.set(mark.student._id, mark.student);
+    setDownloadingAll(true);
+    try {
+      // Get unique students from marks
+      const uniqueStudents = Array.from(
+        marks.reduce((map, mark) => {
+          if (mark.student && mark.student._id) {
+            map.set(mark.student._id, mark.student);
+          }
+          return map;
+        }, new Map()).values()
+      );
+
+      let successCount = 0;
+      let failedCount = 0;
+
+      for (const student of uniqueStudents) {
+        try {
+          await handleDownloadMarks(student._id, student.name);
+          successCount++;
+          // Add a small delay between downloads to prevent browser limitations
+          await new Promise(resolve => setTimeout(resolve, 500));
+        } catch (error) {
+          console.error(`Failed to download marks for ${student.name}:`, error);
+          failedCount++;
         }
-        return map;
-      }, new Map()).values()
-    );
-    for (const student of uniqueStudents) {
-      await handleDownloadMarks(student._id, student.name);
+      }
+
+      if (failedCount === 0) {
+        toast.success(`All ${successCount} student mark sheets downloaded successfully`);
+      } else {
+        toast.error(`${successCount} downloaded successfully, ${failedCount} failed`);
+      }
+    } catch (error) {
+      console.error('Error in handleDownloadAll:', error);
+      toast.error('Failed to download all marks');
+    } finally {
+      setDownloadingAll(false);
     }
-    toast.success('All student mark sheets downloaded');
+  };
+
+  // Download all marks in one combined Excel file
+  const handleDownloadAllInOne = async () => {
+    setDownloadingCombined(true);
+    try {
+      const response = await axios.get('/api/teacher/download-all-marks', {
+        responseType: 'blob'
+      });
+      
+      // Check if the response is actually a blob (Excel file)
+      if (response.data.type && response.data.type.includes('application/json')) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const errorData = JSON.parse(reader.result);
+            toast.error(errorData.message || 'Download failed');
+          } catch (e) {
+            toast.error('Download failed');
+          }
+        };
+        reader.readAsText(response.data);
+        return;
+      }
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `all_students_marks.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      
+      // Clean up the URL object
+      window.URL.revokeObjectURL(url);
+      
+      toast.success('All students marks downloaded successfully');
+    } catch (error) {
+      console.error('Error downloading all marks:', error);
+      toast.error('Failed to download all marks');
+    } finally {
+      setDownloadingCombined(false);
+    }
   };
 
   if (loading) {
@@ -157,10 +246,19 @@ const TeacherDashboard = () => {
           <div className="flex gap-3">
             <button
               onClick={handleDownloadAll}
-              className="bg-white text-green-600 hover:bg-gray-100 font-medium px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors"
+              disabled={downloadingAll || downloadingCombined}
+              className="bg-white text-green-600 hover:bg-gray-100 font-medium px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Download className="h-5 w-5" />
-              <span>Download All</span>
+              <span>{downloadingAll ? 'Downloading...' : 'Download All'}</span>
+            </button>
+            <button
+              onClick={handleDownloadAllInOne}
+              disabled={downloadingAll || downloadingCombined}
+              className="bg-white text-purple-600 hover:bg-gray-100 font-medium px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Download className="h-5 w-5" />
+              <span>{downloadingCombined ? 'Downloading...' : 'Download Combined'}</span>
             </button>
             <button
               onClick={() => setShowAddModal(true)}

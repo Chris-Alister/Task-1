@@ -3,7 +3,15 @@ const Student = require('../models/Student');
 // Get all students
 const getAllStudents = async (req, res) => {
   try {
-    const students = await Student.find({ isActive: true })
+    const { className, section } = req.query;
+    
+    let query = { isActive: true };
+    
+    // Add filters if provided
+    if (className) query.className = className;
+    if (section) query.section = section;
+    
+    const students = await Student.find(query)
       .select('-__v')
       .sort({ name: 1 });
     

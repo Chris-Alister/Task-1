@@ -9,19 +9,28 @@ import StudentDetailsModal from '../components/StudentDetailsModal';
 
 const AdminDashboard = () => {
   const [students, setStudents] = useState([]);
+  const [allStudents, setAllStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
+  const [filters, setFilters] = useState({
+    className: '',
+    section: ''
+  });
 
   useEffect(() => {
     fetchStudents();
+  }, [filters]);
+
+  useEffect(() => {
+    fetchAllStudents();
   }, []);
 
   const fetchStudents = async () => {
     try {
-      const response = await axios.get('/api/admin/students');
+      const response = await axios.get('/api/admin/students', { params: filters });
       setStudents(response.data.data);
     } catch (error) {
       toast.error('Failed to fetch students');
@@ -31,12 +40,22 @@ const AdminDashboard = () => {
     }
   };
 
+  const fetchAllStudents = async () => {
+    try {
+      const response = await axios.get('/api/admin/students');
+      setAllStudents(response.data.data);
+    } catch (error) {
+      console.error('Error fetching all students:', error);
+    }
+  };
+
   const handleAddStudent = async (studentData) => {
     try {
       const response = await axios.post('/api/admin/add-student', studentData);
       toast.success('Student added successfully');
       setShowAddModal(false);
       fetchStudents();
+      fetchAllStudents();
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to add student');
     }
@@ -49,6 +68,7 @@ const AdminDashboard = () => {
       setShowEditModal(false);
       setSelectedStudent(null);
       fetchStudents();
+      fetchAllStudents();
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to update student');
     }
@@ -63,6 +83,7 @@ const AdminDashboard = () => {
       await axios.delete(`/api/admin/delete-student/${studentId}`);
       toast.success('Student deleted successfully');
       fetchStudents();
+      fetchAllStudents();
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to delete student');
     }
@@ -128,6 +149,51 @@ const AdminDashboard = () => {
               <p className="text-3xl font-bold">{[...new Set(students.map(s => s.className))].length}</p>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <h2 className="text-lg font-semibold text-gray-800 mb-4">Filter Students</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Class
+            </label>
+            <select
+              value={filters.className}
+              onChange={(e) => setFilters({ ...filters, className: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors"
+            >
+              <option value="">All Classes</option>
+              {[...new Set(allStudents.map(s => s.className).filter(Boolean))].sort().map(className => (
+                <option key={className} value={className}>{className}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Section
+            </label>
+            <select
+              value={filters.section}
+              onChange={(e) => setFilters({ ...filters, section: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors"
+            >
+              <option value="">All Sections</option>
+              {[...new Set(allStudents.map(s => s.section).filter(Boolean))].sort().map(section => (
+                <option key={section} value={section}>{section}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <div className="mt-4 flex justify-end">
+          <button
+            onClick={() => setFilters({ className: '', section: '' })}
+            className="bg-gray-500 hover:bg-gray-600 text-white font-medium px-4 py-2 rounded-lg transition-colors"
+          >
+            Clear Filters
+          </button>
         </div>
       </div>
 
