@@ -38,7 +38,7 @@ const seedData = async () => {
     // Create teacher user
     const teacherPassword = await bcrypt.hash('password123', 10);
     const teacher = new Teacher({
-      name: 'John Smith',
+      name: 'Anand',
       email: 'teacher@school.com',
       password: teacherPassword,
       subject: 'Mathematics',
@@ -52,55 +52,55 @@ const seedData = async () => {
     // Create sample students
     const students = [
       {
-        name: 'Alice Johnson',
+        name: 'Tina',
         rollNumber: '2024001',
         className: '10th',
         section: 'A',
-        email: 'alice.johnson@student.com',
+        email: 'tina@student.com',
         phone: '+1234567892',
         address: '123 Main St, City, State',
         dateOfBirth: new Date('2006-05-15'),
         gender: 'Female'
       },
       {
-        name: 'Bob Wilson',
+        name: 'Manoj',
         rollNumber: '2024002',
         className: '10th',
         section: 'A',
-        email: 'bob.wilson@student.com',
+        email: 'manoj@student.com',
         phone: '+1234567893',
         address: '456 Oak Ave, City, State',
         dateOfBirth: new Date('2006-08-22'),
         gender: 'Male'
       },
       {
-        name: 'Carol Davis',
+        name: 'Mona',
         rollNumber: '2024003',
         className: '10th',
         section: 'B',
-        email: 'carol.davis@student.com',
+        email: 'mona@student.com',
         phone: '+1234567894',
         address: '789 Pine Rd, City, State',
         dateOfBirth: new Date('2006-03-10'),
         gender: 'Female'
       },
       {
-        name: 'David Brown',
+        name: 'Ali',
         rollNumber: '2024004',
         className: '10th',
         section: 'B',
-        email: 'david.brown@student.com',
+        email: 'ali@student.com',
         phone: '+1234567895',
         address: '321 Elm St, City, State',
         dateOfBirth: new Date('2006-11-05'),
         gender: 'Male'
       },
       {
-        name: 'Eva Garcia',
+        name: 'Rosita',
         rollNumber: '2024005',
         className: '11th',
         section: 'A',
-        email: 'eva.garcia@student.com',
+        email: 'rosita@student.com',
         phone: '+1234567896',
         address: '654 Maple Dr, City, State',
         dateOfBirth: new Date('2005-07-18'),
